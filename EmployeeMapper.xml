@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="EmployeeMapper">
+
+  <select id="selectEmployeeById" parameterType="int" resultType="homework53.Employee">
+    SELECT * FROM employees WHERE employee_id = #{id}
+  </select>
+
+  <select id="selectEmployeesByJobId" parameterType="int" resultType="homework53.Employee">
+    SELECT * FROM employees WHERE job_id = #{id}
+  </select>
+
+  <insert id="insertEmployee" parameterType="homework53.Employee">
+    INSERT INTO hr.employees (first_name, last_name, email, phone_number, hire_date, job_id, salary, manager_id, department_id)
+    VALUES (#{first_name}, #{last_name}, #{email}, #{phone_number}, #{hire_date}, #{job_id}, #{salary}, #{manager_id}, #{department_id})
+  </insert>
+
+  <update id="updateEmployee" parameterType="homework53.Employee">
+    UPDATE employees 
+    SET first_name = #{first_name}, 
+        last_name = #{last_name},
+	email = #{email},
+	phone_number = #{phone_number},
+	hire_date = #{hire_date},
+	job_id = #{job_id},
+	salary = #{salary},
+	manager_id = #{manager_id},
+	department_id = #{department_id}
+    WHERE employee_id = #{employee_id}
+  </update>
+
+  <delete id="deleteEmployeeById" parameterType="int">
+    DELETE FROM employees WHERE employee_id = #{id}
+  </delete>
+</mapper>

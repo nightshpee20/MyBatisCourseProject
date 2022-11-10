@@ -3,9 +3,11 @@ package utilities;
 import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
-import java.net.URL;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -18,105 +20,192 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.SAXException;
 
 import configuration.Configuration;
+import configuration.DataSource;
+import configuration.Environment;
+import configuration.Environments;
 import configuration.Mapper;
+import configuration.Property;
 import configuration.Query;
+import configuration.TransactionManager;
 
 public class XMLParser {
 	static Document document;
-	static Configuration configuration;
+	static File configFile;
+	
+	private XMLParser() {}
 	
 	public static Configuration getConfiguration(File config) throws ParserConfigurationException, URISyntaxException {
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-		Document document = null;
-		
+
 		try {
 			DocumentBuilder builder = factory.newDocumentBuilder();
 			document = builder.parse(config);
-		} catch (ParserConfigurationException | SAXException | IOException e) {
+		} catch (SAXException | IOException e) {
 			e.printStackTrace();
 		}
-
-		configuration = new Configuration();
 		
-		getProperties(document, configuration);
-		getMappers(document, configuration);
+		if (document.getElementsByTagName("configuration").getLength() == 0)
+			throw new ParserConfigurationException("Missing root tag <configuration> in " + configFile.getName());
+		
+		configFile = config;
+		Configuration configuration = new Configuration();
+		
+		configuration.environments = getEnvironments();
+		configuration.mappers = getMappers();
 		
 		return configuration;
 	}
 
-//	private static void getEnvironments();
-	
-	private static void getProperties() throws ParserConfigurationException {
-		NodeList properties = document.getElementsByTagName("property");
-		if (properties.getLength() == 0)
-			throw new ParserConfigurationException("Missing property elements!");
+	private static Environments getEnvironments() throws ParserConfigurationException {
+		NodeList environmentsNL = document.getElementsByTagName("environments");
 		
-		for (int i = 0; i < properties.getLength(); i++) {
-			Node property = properties.item(i);
+		if (environmentsNL.getLength() == 0)
+			return null;
+		
+		Environments environments = new Environments();
+		Element environmentsEl = (Element)environmentsNL.item(0);
+		environments.defaultt = environmentsEl.getAttribute("default");
+		environments.environments = getEnvironmentTagsAsList();
+		
+		return environments;
+	};
+	
+	private static List<Environment> getEnvironmentTagsAsList() throws ParserConfigurationException {
+		NodeList environmentNL = document.getElementsByTagName("environment");
+		int len = environmentNL.getLength();
+		
+		if (len == 0)
+			throw new ParserConfigurationException("No <environment> elements have been found in " + configFile.getName());
+		
+		ArrayList<Environment> environmentAL = new ArrayList<>(len);
+		
+		for (int i = 0; i < len; i++) {
+			Element environmentEl = (Element) environmentNL.item(i);
 			
-			if (property.getNodeType() == Node.ELEMENT_NODE) {
-				Element element = (Element) property;
-				String name = element.getAttribute("name");
-				String val = element.getAttribute("value");
-				
-				if (name.length() == 0 || val.length() == 0)
-					throw new ParserConfigurationException("Missing property name or value!");
-				
-				configuration.properties.put("password", val);
-			}
+			String id = environmentEl.getAttribute("id");
+			TransactionManager transactionManager = getTransactionManager(environmentEl);
+			DataSource dataSource = getDataSource(environmentEl);
+			
+			if (id == null || transactionManager == null || dataSource == null)
+				throw new ParserConfigurationException("Missing \'id/transactionManager/dataSource\' of <environment> somewhere in " + configFile.getName());
+		
+			Environment environment = new Environment();
+			environment.id = id;
+			environment.transactionManager = transactionManager;
+			environment.dataSource = dataSource;
+			
+			environmentAL.add(environment);
 		}
+		
+		return environmentAL;
 	}
 	
-	private static void getMappers() throws ParserConfigurationException, URISyntaxException {
-		NodeList mappers = document.getElementsByTagName("mapper");
+	private static TransactionManager getTransactionManager(Element parrent) throws ParserConfigurationException {
+		NodeList transactionManagerNL = parrent.getElementsByTagName("transactionManager");
 		
-		for (int i = 0; i < mappers.getLength(); i++) {
-			Node property = mappers.item(i);
-			
-			if (property.getNodeType() == Node.ELEMENT_NODE) {
-				Element element = (Element) property;
-				
-				String value = element.getAttribute("resource");
-				String type = "";
-				if (value.length() != 0)
-					type = "resource";
-				if (type.length() == 0) {
-					value = element.getAttribute("class");
-					type = "class";
-				}
-				if (type.length() == 0)
-					throw new ParserConfigurationException("Invalid mapper element!");
-				System.out.println(value);
-				System.out.println(type);
-				switch (type) {
-					case "resource":
-						URL mapperUrl = XMLParser.class.getResource(value);
-						Path mapperPath = Paths.get(mapperUrl.toURI());
-						File mapperXML = mapperPath.toFile();
-						parseMapper(mapperXML);
-						break;
-					case "class":
-						break;
-					case "name":
-				}
-			}
-		}
+		if (transactionManagerNL.getLength() == 0)
+			throw new ParserConfigurationException("Missing <transactionManager> somewhere in " + configFile.getName());
+		
+		Element transactionManagerEl = (Element)transactionManagerNL.item(0);
+		String type = transactionManagerEl.getAttribute("type");
+		if (type.length() == 0)
+			throw new ParserConfigurationException("Missing \'type\' of <transactionManager> somewhere in " + configFile.getName());
+		
+		List<Property> properties = getProperties(transactionManagerEl);
+		
+		TransactionManager transactionManager = new TransactionManager();
+		transactionManager.type = type;
+		transactionManager.properties = properties;
+		
+		return transactionManager;
+	}
+	//TODO: This method is basically the same as the one above - merge them
+	private static DataSource getDataSource(Element parrent) throws ParserConfigurationException {
+		NodeList dataSourceNL = parrent.getElementsByTagName("dataSource");
+		if (dataSourceNL.getLength() == 0)
+			throw new ParserConfigurationException("Missing <dataSource> somewhere in " + configFile.getName());
+		
+		Element dataSourceEl = (Element)dataSourceNL.item(0);
+		String type = dataSourceEl.getAttribute("type");
+		if (type.length() == 0)
+			throw new ParserConfigurationException("Missing \'type\' of <dataSource> somewhere in " + configFile.getName());
+		
+		List<Property> properties = getProperties(dataSourceEl);
+		
+		DataSource dataSource = new DataSource();
+		dataSource.type = type;
+		dataSource.properties = properties;
+		
+		return dataSource;
 	}
 	
-	private static Configuration parseMapper(File mapper) throws ParserConfigurationException {
+	private static List<Property> getProperties(Element parrent) throws ParserConfigurationException {
+		NodeList propertyNL = parrent.getElementsByTagName("property");
+		List<Property> propertiesAL = new ArrayList<>();
+		
+		for (int i = 0; i < propertyNL.getLength(); i++) {
+			Element propertyEl = (Element)propertyNL.item(i);
+
+			String name = propertyEl.getAttribute("name");
+			String value = propertyEl.getAttribute("value");
+			
+			if (name.length() == 0 || value.length() ==0)
+				throw new ParserConfigurationException("Missing \'name/value\' of <property> somewhere in " + configFile.getName());
+			
+			Property property = new Property();
+			property.name = name;
+			property.value = value;
+			propertiesAL.add(property);
+		}
+		
+		return propertiesAL.size() == 0 ? null : propertiesAL;
+	}
+	
+	private static List<Mapper> getMappers() throws ParserConfigurationException, URISyntaxException {
+		NodeList mappersNL = document.getElementsByTagName("mapper");
+		List<Mapper> mappersAL = new ArrayList<>();
+		
+		for (int i = 0; i < mappersNL.getLength(); i++) {
+			Element mapperEl = (Element)mappersNL.item(i);
+
+			String value = mapperEl.getAttribute("resource");
+			String type = "";
+			if (value.length() != 0)
+				type = "resource";
+			if (type.length() == 0) {
+				value = mapperEl.getAttribute("class");
+				type = "class";
+			}
+			if (type.length() == 0)
+				throw new ParserConfigurationException("Invalid mapper element!");
+			
+			switch (type) {
+				case "resource":
+					Path configPath = Paths.get(configFile.getAbsolutePath());
+					Path mapperPath = configPath.resolveSibling(value);
+					File mapper = mapperPath.toFile();
+					mappersAL.add(parseMapper(mapper));
+					break;
+				case "class":
+					break;
+			}
+		}
+		
+		return mappersAL;
+	}
+	
+	private static Mapper parseMapper(File mapper) throws ParserConfigurationException {
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
-		Document document = null;
+		Document mapperDocument = null;
 		
 		try {
 			DocumentBuilder builder = factory.newDocumentBuilder();
-			document = builder.parse(mapper);
-		} catch (ParserConfigurationException | SAXException | IOException e) {
+			mapperDocument = builder.parse(mapper);
+		} catch (SAXException | IOException e) {
 			e.printStackTrace();
 		}
 		
-		Mapper newMapper = new Mapper();
-		
-		Node mapperTag = document.getElementsByTagName("mapper").item(0);
+		Node mapperTag = mapperDocument.getElementsByTagName("mapper").item(0);
 		if (mapperTag == null)
 			throw new ParserConfigurationException("Missing root tag (<mapper>) in " + mapper.getName());
 		
@@ -125,39 +214,37 @@ public class XMLParser {
 		if (namespace.length() == 0)
 			throw new ParserConfigurationException("Missing namespace attribute in root tag in " + mapper.getName());
 		
+		Mapper newMapper = new Mapper();
 		newMapper.namespace = namespace;
-		String[] queryTags = {"select", "insert", "update", "delete"};
-		for (String queryTag : queryTags) 
-			getQueries(document, newMapper, queryTag);
+		newMapper.queries = new HashMap<>();
 		
-		return configuration;
+		String[] queryTags = {"select", "insert", "update", "delete"};
+		for (String queryTag : queryTags) 	
+			getQueries(mapperDocument, newMapper, queryTag);
+		
+		return newMapper;
 	}
 
-	private static void getQueries(Document document, Mapper newMapper, String queryTag)
-			throws ParserConfigurationException {
+	private static void getQueries(Document document, Mapper newMapper, String queryTag) throws ParserConfigurationException {
 		NodeList queriesInXML = document.getElementsByTagName(queryTag);
 		Query query = null;
+
 		for (int i = 0; i < queriesInXML.getLength(); i++) {
-			Node queryNode = queriesInXML.item(i);
+			Element queryEl = (Element)queriesInXML.item(i);
 			
-			if (queryNode.getNodeType() == Node.ELEMENT_NODE) {
-				query = new Query();
-				Element queryEl = (Element) queryNode;
-				String methodId = queryEl.getAttribute("id");
-				String resultType = queryEl.getAttribute("resultType");
-				String parameterType = queryEl.getAttribute("parameterType");
-				String sql = queryEl.getTextContent();
-				
-				if (methodId.length() == 0 || parameterType.length() == 0 || sql.length() == 0)
-					throw new ParserConfigurationException("Missing query id/parameterType/sql!");
-				
-				query.resultType = resultType;
-				query.parameterType = parameterType;
-				query.setSql(sql);
-				
-				newMapper.queries.put(methodId, query);
-//				System.out.println(methodId + " " + resultType + " " + parameterType + "\n" + sql);
-			}
+			String methodId = queryEl.getAttribute("id");
+			String resultType = queryEl.getAttribute("resultType");
+			String parameterType = queryEl.getAttribute("parameterType");
+			String sql = queryEl.getTextContent().strip();
+
+			if (methodId.length() == 0 || parameterType.length() == 0 || sql.length() == 0)
+				throw new ParserConfigurationException("Missing query id/parameterType/sql!");
+
+			query = new Query();
+			query.resultType = resultType;
+			query.parameterType = parameterType;
+			query.sql = sql;
+			newMapper.queries.put(methodId, query);
 		}
 	}
 }
