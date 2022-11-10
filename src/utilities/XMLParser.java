@@ -8,6 +8,7 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -24,7 +25,6 @@ import configuration.DataSource;
 import configuration.Environment;
 import configuration.Environments;
 import configuration.Mapper;
-import configuration.Property;
 import configuration.Query;
 import configuration.TransactionManager;
 
@@ -65,19 +65,19 @@ public class XMLParser {
 		Environments environments = new Environments();
 		Element environmentsEl = (Element)environmentsNL.item(0);
 		environments.defaultt = environmentsEl.getAttribute("default");
-		environments.environments = getEnvironmentTagsAsList();
+		environments.environments = getEnvironmentTagsAsMap();
 		
 		return environments;
 	};
 	
-	private static List<Environment> getEnvironmentTagsAsList() throws ParserConfigurationException {
+	private static Map<String, Environment> getEnvironmentTagsAsMap() throws ParserConfigurationException {
 		NodeList environmentNL = document.getElementsByTagName("environment");
 		int len = environmentNL.getLength();
 		
 		if (len == 0)
 			throw new ParserConfigurationException("No <environment> elements have been found in " + configFile.getName());
 		
-		ArrayList<Environment> environmentAL = new ArrayList<>(len);
+		Map<String, Environment> environmentM = new HashMap<>(len);
 		
 		for (int i = 0; i < len; i++) {
 			Element environmentEl = (Element) environmentNL.item(i);
@@ -90,14 +90,13 @@ public class XMLParser {
 				throw new ParserConfigurationException("Missing \'id/transactionManager/dataSource\' of <environment> somewhere in " + configFile.getName());
 		
 			Environment environment = new Environment();
-			environment.id = id;
 			environment.transactionManager = transactionManager;
 			environment.dataSource = dataSource;
 			
-			environmentAL.add(environment);
+			environmentM.put(id, environment);
 		}
 		
-		return environmentAL;
+		return environmentM;
 	}
 	
 	private static TransactionManager getTransactionManager(Element parrent) throws ParserConfigurationException {
@@ -111,7 +110,7 @@ public class XMLParser {
 		if (type.length() == 0)
 			throw new ParserConfigurationException("Missing \'type\' of <transactionManager> somewhere in " + configFile.getName());
 		
-		List<Property> properties = getProperties(transactionManagerEl);
+		Map<String, String> properties = getProperties(transactionManagerEl);
 		
 		TransactionManager transactionManager = new TransactionManager();
 		transactionManager.type = type;
@@ -130,7 +129,7 @@ public class XMLParser {
 		if (type.length() == 0)
 			throw new ParserConfigurationException("Missing \'type\' of <dataSource> somewhere in " + configFile.getName());
 		
-		List<Property> properties = getProperties(dataSourceEl);
+		Map<String, String> properties = getProperties(dataSourceEl);
 		
 		DataSource dataSource = new DataSource();
 		dataSource.type = type;
@@ -139,9 +138,9 @@ public class XMLParser {
 		return dataSource;
 	}
 	
-	private static List<Property> getProperties(Element parrent) throws ParserConfigurationException {
+	private static Map<String, String> getProperties(Element parrent) throws ParserConfigurationException {
 		NodeList propertyNL = parrent.getElementsByTagName("property");
-		List<Property> propertiesAL = new ArrayList<>();
+		Map<String, String> propertiesM = new HashMap<>();
 		
 		for (int i = 0; i < propertyNL.getLength(); i++) {
 			Element propertyEl = (Element)propertyNL.item(i);
@@ -152,13 +151,10 @@ public class XMLParser {
 			if (name.length() == 0 || value.length() ==0)
 				throw new ParserConfigurationException("Missing \'name/value\' of <property> somewhere in " + configFile.getName());
 			
-			Property property = new Property();
-			property.name = name;
-			property.value = value;
-			propertiesAL.add(property);
+			propertiesM.put(name, value);
 		}
 		
-		return propertiesAL.size() == 0 ? null : propertiesAL;
+		return propertiesM.size() == 0 ? null : propertiesM;
 	}
 	
 	private static List<Mapper> getMappers() throws ParserConfigurationException, URISyntaxException {

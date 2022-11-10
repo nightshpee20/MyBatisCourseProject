@@ -5,7 +5,7 @@ import java.util.List;
 public class Configuration {
 	public Environments environments;
 	public List<Mapper> mappers;
-	
+	//TODO: Map instead of list
 	@Override
 	public String toString() {
 		StringBuilder sb = new StringBuilder();
