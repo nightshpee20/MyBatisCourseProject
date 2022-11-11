@@ -16,7 +16,10 @@ public class SqlSessionFactoryBuilder {
 		this.environment = environment;
 		
 		Map<String, String> properties = getProperties();
-		return new SqlSessionFactory(properties);
+		SqlSessionFactory ssf = new SqlSessionFactory(properties);
+		ssf.config = config;
+		
+		return ssf;
 	}
 	
 	private Map<String, String> getProperties() {

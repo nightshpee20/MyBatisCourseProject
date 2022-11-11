@@ -8,6 +8,7 @@ import configuration.Configuration;
 import connection.ConnectionPool;
 
 public class SqlSessionFactory {
+	Configuration config;
 	Map<String, String> properties;
 	ConnectionPool cp;
 	
@@ -16,7 +17,7 @@ public class SqlSessionFactory {
 	}
 	
 	public SqlSession openSession() {
-		
+		return new SqlSession(cp.getConnection());
 	}
 	
 	Configuration getConfiguration() {
