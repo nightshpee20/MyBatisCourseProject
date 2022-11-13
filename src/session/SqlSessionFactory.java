@@ -2,9 +2,11 @@ package session;
 
 import java.io.IOException;
 import java.sql.SQLException;
+import java.util.HashMap;
 import java.util.Map;
 
 import configuration.Configuration;
+import configuration.Mapper;
 import connection.ConnectionPool;
 
 public class SqlSessionFactory {
@@ -17,8 +19,9 @@ public class SqlSessionFactory {
 	}
 	
 	public SqlSession openSession() {
-		return new SqlSession(cp.getConnection());
+		return new SqlSession(cp.getConnection(), config.mappers);
 	}
+
 	
 	Configuration getConfiguration() {
 		return config;

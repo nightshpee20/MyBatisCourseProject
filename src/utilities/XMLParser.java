@@ -7,8 +7,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -157,9 +159,9 @@ public class XMLParser {
 		return propertiesM.size() == 0 ? null : propertiesM;
 	}
 	
-	private static List<Mapper> getMappers() throws ParserConfigurationException, URISyntaxException {
+	private static Map<String, Mapper> getMappers() throws ParserConfigurationException, URISyntaxException {
 		NodeList mappersNL = document.getElementsByTagName("mapper");
-		List<Mapper> mappersAL = new ArrayList<>();
+		Map<String, Mapper> mappersHM = new HashMap<>();
 		
 		for (int i = 0; i < mappersNL.getLength(); i++) {
 			Element mapperEl = (Element)mappersNL.item(i);
@@ -180,14 +182,16 @@ public class XMLParser {
 					Path configPath = Paths.get(configFile.getAbsolutePath());
 					Path mapperPath = configPath.resolveSibling(value);
 					File mapper = mapperPath.toFile();
-					mappersAL.add(parseMapper(mapper));
+					Mapper newMap = parseMapper(mapper);
+					String namespace = newMap.namespace;
+					mappersHM.put(namespace, newMap);
 					break;
 				case "class":
 					break;
 			}
 		}
 		
-		return mappersAL;
+		return mappersHM;
 	}
 	
 	private static Mapper parseMapper(File mapper) throws ParserConfigurationException {
@@ -229,6 +233,7 @@ public class XMLParser {
 			Element queryEl = (Element)queriesInXML.item(i);
 			
 			String methodId = queryEl.getAttribute("id");
+			String queryType = queryEl.getTagName(); 
 			String resultType = queryEl.getAttribute("resultType");
 			String parameterType = queryEl.getAttribute("parameterType");
 			String sql = queryEl.getTextContent().strip();
@@ -237,6 +242,8 @@ public class XMLParser {
 				throw new ParserConfigurationException("Missing query id/parameterType/sql!");
 
 			query = new Query();
+			query.id = methodId;
+			query.queryType = queryType;
 			query.resultType = resultType;
 			query.parameterType = parameterType;
 			query.addSql(sql);

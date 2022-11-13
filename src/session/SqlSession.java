@@ -1,70 +1,167 @@
 package session;
 
+import java.lang.annotation.Annotation;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.ParameterizedType;
+import java.lang.reflect.Proxy;
+import java.lang.reflect.Type;
 import java.sql.Connection;
 import java.sql.Date;
+import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.sql.Time;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import configuration.Mapper;
 import configuration.Query;
 
 public class SqlSession {
-	Connection con;
-	ArrayList<Query> selects;
-	ArrayList<Query> inserts;
-	ArrayList<Query> updates;
-	ArrayList<Query> deletes;
+	private class MapperHandler<T> implements InvocationHandler {
+		Mapper instance;
+		Class<T> type;
+		Map<String, String> queryTypes;
+		
+		MapperHandler(Mapper instance, Class<T> type) {
+			this.instance = instance;
+			this.type = type;
+			queryTypes = new HashMap<>();
+			
+			instance.queries.forEach((id, query) -> {
+				queryTypes.put(id, query.queryType);
+			});
+		}
+		
+		@Override
+		public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
+			String mName = method.getName();
+			
+			switch (queryTypes.get(mName)) {
+				case "select":
+					break;
+				case "insert":
+					break;
+				case "update":
+					break;
+				case "delete":
+					
+			}
+			
+			return method.invoke(proxy, 0);
+		}
+	}
 	
-	SqlSession(Connection con) {
+	private static final String ARG_PAT = "#\\{[\\w]\\w*}";
+	private static final String PRMTV_SEQ = "#{value}";
+	
+	private Connection con;
+	private Map<String, Mapper> mappers;
+	private Pattern paramPat;
+	
+	SqlSession(Connection con, Map<String, Mapper> mappers) {
 		this.con = con;
-		selects = new ArrayList<>();
-		inserts = new ArrayList<>();
-		updates = new ArrayList<>();
-		deletes = new ArrayList<>();
+		this.mappers = mappers;
+		paramPat = Pattern.compile(ARG_PAT);
 	}
 	
-	public void close() throws SQLException {
-		con.close();
+	public <T> T selectObject(String sql, Class<T> c, Object params) throws Exception {
+		List<T> resAL = selectList(sql, c, params);
+		int size = resAL.size();
+		
+		if (size > 1)
+			throw new SQLException("Too many results!");
+		if (size == 0)
+			return null;
+		
+		return resAL.get(0);
 	}
 	
-//	public void commit() {
-//		for (Query q : inserts) {
-//			
-//		}
-//	}
-	
-	public <T> T selectOne(String statement, Object parameter) {
-		statement = formatSql(statement);
-		return selectObject(statement, Object.class, parameter);
-	}
-	
-	public int insert(String statement, Object parameter) {
-		return 0;
-	}
-	
-	public void rollback() {
-		inserts = new ArrayList<>();
-		updates = new ArrayList<>();
-		deletes = new ArrayList<>();
-	}
-	
-	private <T> T selectObject(String sql, Class<T> c, Object params) throws NoSuchFieldException, SecurityException, IllegalArgumentException, IllegalAccessException, SQLException, InstantiationException, InvocationTargetException, NoSuchMethodException {
-		Statement query = con.createStatement();
-		ResultSet rs = query.executeQuery(sql);
-		rs.next();
-
+	public <T> List<T> selectList(String sql, Class<T> c, Object params) throws Exception {
+		T obj = null;
+		ArrayList<T> resAL = new ArrayList<>();
+		ResultSet rs;
+		
+		if (sql.contains(PRMTV_SEQ)) {
+			sql = sql.replace(PRMTV_SEQ, "?");
+			
+			PreparedStatement ps = con.prepareStatement(sql);
+			
+			populatePreparedStatement(params, ps);
+			
+			rs = ps.executeQuery();	
+		} else {
+			sql = formatSql(sql, c, params);
+			Statement query = con.createStatement();
+			rs = query.executeQuery(sql);
+		}
+		
 		Constructor<T> constructor = c.getDeclaredConstructor();
-		T res = (T)constructor.newInstance();
-
-		populateResult(c, rs, res);
-
-		return res;
+		obj = (T)constructor.newInstance();
+		
+		while (rs.next()) {
+			obj = (T)constructor.newInstance();
+			populateResult(c, rs, obj);
+			resAL.add(obj);
+		}
+		
+		return resAL;
+	}
+	
+	private <T> String formatSql(String sql, Class<T> c, Object params) throws NoSuchFieldException, IllegalAccessException {
+		Matcher paramMat = paramPat.matcher(sql);
+		while (paramMat.find()) {
+			String occ = paramMat.group();
+			String fieldName = occ.substring(2, occ.length() - 1);
+			
+			Field f = c.getDeclaredField(fieldName);
+			f.setAccessible(true);
+			
+			String val = f.get(params).toString();
+			Class fcl = f.getType();
+			
+			if (!fcl.isPrimitive() && !Number.class.isAssignableFrom(fcl)) 
+				val = String.format("\"%s\"", val);
+			
+			occ = occ.replaceAll("\\{", "\\\\{");
+			sql = sql.replaceAll(occ, val);
+		}
+		
+		return sql;
+	}
+	
+	private void populatePreparedStatement(Object params, PreparedStatement ps) throws SQLException {
+		Class fcl = params.getClass();
+		if (fcl == Boolean.class)
+			ps.setBoolean(1, (Boolean)params);
+		else if (fcl == Byte.class)
+			ps.setByte(1, (Byte)params);
+		else if (fcl == Date.class)
+			ps.setDate(1, (Date)params);
+		else if (fcl == Double.class)
+			ps.setDouble(1, (Double)params);
+		else if (fcl == Float.class) 
+			ps.setFloat(1, (Float)params);
+		else if (fcl == Integer.class)
+			ps.setInt(1, (Integer)params);
+		else if (fcl == Long.class) 
+			ps.setLong(1, (Long)params);
+		else if (fcl == Short.class) 
+			ps.setShort(1, (Short)params);
+		else if (fcl == String.class) 
+			ps.setString(1, (String)params);
+		else if (fcl == Time.class)
+			ps.setTime(1, (Time)params);
 	}
 
 	private <T> void populateResult(Class<T> c, ResultSet rs, T res) throws IllegalAccessException, SQLException {
@@ -98,7 +195,26 @@ public class SqlSession {
 		}
 	}
 	
-	private String formatSql(String sql) {
-		return sql.replaceAll(Query.PARAM_PAT, "?");
+	public void close() throws SQLException {
+		con.close();
+		con = null;
+		mappers = null;
+	}
+	
+	@SuppressWarnings("unchecked")
+	public <T> T getMapper(Class<T> cl) throws Exception {
+		String clName = cl.getName();
+		Mapper map = mappers.get(clName);
+		
+		if (map == null)
+			return null;
+		
+		var handler = new MapperHandler<>(map, cl);
+		T proxy = (T)Proxy.newProxyInstance(
+			ClassLoader.getSystemClassLoader(),
+			new Class[] {cl},
+			handler
+		);
+		return proxy;
 	}
 }
