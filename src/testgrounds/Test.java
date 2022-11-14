@@ -63,11 +63,11 @@ public class Test {
 //			System.out.println(emp.first_name);
 		
 		Employee newEmp = new Employee();
-//		newEmp.employee_id = 224;
-		newEmp.first_name = "bbbb";
-		newEmp.last_name = "bbbb";
-		newEmp.email = "aaaa@fake.com";
-		newEmp.phone_number = "8273645901";
+		newEmp.employee_id = 225;
+		newEmp.first_name = "dddd";
+		newEmp.last_name = "dddd";
+		newEmp.email = "cccc@fake.com";
+		newEmp.phone_number = "8673645901";
 		newEmp.hire_date = java.sql.Date.valueOf(LocalDate.now());
 		newEmp.salary = 10_000;
 		newEmp.job_id = 4;
@@ -83,6 +83,18 @@ public class Test {
 //		int affectedRows = em.deleteEmployeeById(224);
 //		System.out.println(affectedRows);
 		
+		//TEST insert()
+//		int affectedRows = sesh.insert("INSERT INTO employees(first_name, last_name, email, phone_number, hire_date, job_id, salary, manager_id, department_id) VALUES(#{first_name},#{last_name},#{email},#{phone_number},#{hire_date},#{job_id},#{salary},#{manager_id},#{department_id})", newEmp);
+//		System.out.println(affectedRows);
+		
+		//TEST update()
+//		int affectedRows = sesh.update("UPDATE employees SET first_name = #{first_name}, last_name = #{last_name} WHERE employee_id = #{employee_id}", newEmp);
+//		System.out.println(affectedRows);
+		
+		//TEST delete()
+		int empId = 225;
+		int affectedRows = sesh.delete("DELETE FROM employees WHERE employee_id = #{value}", 225);
+		System.out.println(affectedRows);
 	}
 
 }

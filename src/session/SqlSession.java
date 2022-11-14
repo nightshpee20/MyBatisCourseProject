@@ -118,6 +118,24 @@ public class SqlSession {
 		return resAL;
 	}
 	
+	public int insert(String sql, Object params) throws NoSuchFieldException, IllegalAccessException, SQLException {
+		if (sql.toLowerCase().contains("delete") || sql.toLowerCase().contains("update") || sql.substring(0, 6).toLowerCase().equals("select"))
+			throw new SQLException("Illegal sql statement!");
+		return executeUpdate(sql, params);
+	}
+	
+	public int update(String sql, Object params) throws NoSuchFieldException, IllegalAccessException, SQLException {
+		if (sql.toLowerCase().contains("delete") || sql.toLowerCase().contains("insert") || sql.substring(0, 6).toLowerCase().equals("select"))
+			throw new SQLException("Illegal sql statement!");
+		return executeUpdate(sql, params);
+	}
+	
+	public int delete(String sql, Object params) throws NoSuchFieldException, IllegalAccessException, SQLException {
+		if (sql.toLowerCase().contains("insert") || sql.toLowerCase().contains("update") || sql.substring(0, 6).toLowerCase().equals("select"))
+			throw new SQLException("Illegal sql statement!");
+		return executeUpdate(sql, params);
+	}
+	
 	private int executeUpdate(String sql, Object params) throws NoSuchFieldException, IllegalAccessException, SQLException {
 		Statement query = null; 
 		
