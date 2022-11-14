@@ -246,7 +246,7 @@ public class XMLParser {
 			query.queryType = queryType;
 			query.resultType = resultType;
 			query.parameterType = parameterType;
-			query.addSql(sql);
+			query.sql = sql;
 			newMapper.queries.put(methodId, query);
 		}
 	}

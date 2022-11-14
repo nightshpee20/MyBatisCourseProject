@@ -4,6 +4,8 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URISyntaxException;
 import java.sql.SQLException;
+import java.time.LocalDate;
+import java.util.List;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -53,7 +55,34 @@ public class Test {
 		SqlSession sesh = factory.openSession();
 //		
 		EmployeeMapper em = sesh.getMapper(EmployeeMapper.class);
-		em.deleteEmployeeById(0);
+//		Employee emp = em.selectEmployeeById(208);
+//		System.out.println(emp.first_name);
+		
+//		List<Employee> emps = em.selectEmployeesByJobId(4);
+//		for (Employee emp : emps)
+//			System.out.println(emp.first_name);
+		
+		Employee newEmp = new Employee();
+//		newEmp.employee_id = 224;
+		newEmp.first_name = "bbbb";
+		newEmp.last_name = "bbbb";
+		newEmp.email = "aaaa@fake.com";
+		newEmp.phone_number = "8273645901";
+		newEmp.hire_date = java.sql.Date.valueOf(LocalDate.now());
+		newEmp.salary = 10_000;
+		newEmp.job_id = 4;
+		newEmp.manager_id = 208;
+		newEmp.department_id = 9;
+		
+//		int affectedRows = em.insertEmployee(newEmp);
+//		System.out.println(affectedRows);
+		
+//		int affectedRows = em.updateEmployee(newEmp);
+//		System.out.println(affectedRows);
+		
+//		int affectedRows = em.deleteEmployeeById(224);
+//		System.out.println(affectedRows);
+		
 	}
 
 }

@@ -26,6 +26,7 @@ import java.util.regex.Pattern;
 
 import configuration.Mapper;
 import configuration.Query;
+import exceptions.BindingException;
 
 public class SqlSession {
 	private class MapperHandler<T> implements InvocationHandler {
@@ -46,19 +47,18 @@ public class SqlSession {
 		@Override
 		public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
 			String mName = method.getName();
+			Query query = instance.queries.get(mName);
+			String sql = query.sql;
 			
 			switch (queryTypes.get(mName)) {
 				case "select":
-					break;
-				case "insert":
-					break;
-				case "update":
-					break;
-				case "delete":
-					
+					Class returnType = Class.forName(query.resultType);
+					return selectList(sql, returnType, args[0]);
+				case "insert", "update", "delete":
+					return executeUpdate(sql, args[0]);	
 			}
 			
-			return method.invoke(proxy, 0);
+			throw new BindingException("Illegal tag name");
 		}
 	}
 	
@@ -75,7 +75,7 @@ public class SqlSession {
 		paramPat = Pattern.compile(ARG_PAT);
 	}
 	
-	public <T> T selectObject(String sql, Class<T> c, Object params) throws Exception {
+	public <T> T selectOne(String sql, Class<T> c, Object params) throws Exception {
 		List<T> resAL = selectList(sql, c, params);
 		int size = resAL.size();
 		
@@ -116,6 +116,22 @@ public class SqlSession {
 		}
 		
 		return resAL;
+	}
+	
+	private int executeUpdate(String sql, Object params) throws NoSuchFieldException, IllegalAccessException, SQLException {
+		Statement query = null; 
+		
+		if (sql.contains(PRMTV_SEQ)) {
+			if (!Number.class.isAssignableFrom(params.getClass()))
+				sql = sql.replace(PRMTV_SEQ, String.format("\"%s\"", params.toString()));
+			else
+				sql = sql.replace(PRMTV_SEQ, params.toString());
+		} else {
+			sql = formatSql(sql, params.getClass(), params);
+		}
+		query = con.createStatement();
+		
+		return query.executeUpdate(sql);
 	}
 	
 	private <T> String formatSql(String sql, Class<T> c, Object params) throws NoSuchFieldException, IllegalAccessException {
