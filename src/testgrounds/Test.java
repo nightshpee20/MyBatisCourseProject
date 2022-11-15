@@ -46,15 +46,15 @@ public class Test {
 //		String type = el.getAttribute("type");
 //		System.out.println(type.length());
 			
-		File configFile = new File("C:\\Users\\night\\Desktop\\Java Internship\\MyBatis\\mybatis-config.xml");
-		Configuration config = XMLParser.getConfiguration(configFile);
-		
-//		System.out.println(config.toString());
-		
-		SqlSessionFactory factory = new SqlSessionFactoryBuilder().build(config, "development");
-		SqlSession sesh = factory.openSession();
+//		File configFile = new File("C:\\Users\\night\\Desktop\\Java Internship\\MyBatis\\mybatis-config.xml");
+//		Configuration config = XMLParser.getConfiguration(configFile);
 //		
-		EmployeeMapper em = sesh.getMapper(EmployeeMapper.class);
+////		System.out.println(config.toString());
+//		
+//		SqlSessionFactory factory = new SqlSessionFactoryBuilder().build(config, "development");
+//		SqlSession sesh = factory.openSession();
+////		
+//		EmployeeMapper em = sesh.getMapper(EmployeeMapper.class);
 //		Employee emp = em.selectEmployeeById(208);
 //		System.out.println(emp.first_name);
 		
@@ -92,9 +92,18 @@ public class Test {
 //		System.out.println(affectedRows);
 		
 		//TEST delete()
-		int empId = 225;
-		int affectedRows = sesh.delete("DELETE FROM employees WHERE employee_id = #{value}", 225);
-		System.out.println(affectedRows);
+//		int empId = 225;
+//		int affectedRows = sesh.delete("DELETE FROM employees WHERE employee_id = #{value}", 225);
+//		System.out.println(affectedRows);
+		
+		String bruh = "";
+		Integer num = null;
+		try {
+			num = Integer.parseInt(bruh);			
+		} catch (NumberFormatException e) {
+			num = 12;
+		}
+		System.out.println(num);
 	}
 
 }

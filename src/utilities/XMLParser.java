@@ -29,6 +29,8 @@ import configuration.Environments;
 import configuration.Mapper;
 import configuration.Query;
 import configuration.TransactionManager;
+import exceptions.BindingException;
+import utilities.Cache.EvictionPolicy;
 
 public class XMLParser {
 	static Document document;
@@ -36,7 +38,7 @@ public class XMLParser {
 	
 	private XMLParser() {}
 	
-	public static Configuration getConfiguration(File config) throws ParserConfigurationException, URISyntaxException {
+	public static Configuration getConfiguration(File config) throws ParserConfigurationException, URISyntaxException, BindingException {
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 
 		try {
@@ -159,7 +161,7 @@ public class XMLParser {
 		return propertiesM.size() == 0 ? null : propertiesM;
 	}
 	
-	private static Map<String, Mapper> getMappers() throws ParserConfigurationException, URISyntaxException {
+	private static Map<String, Mapper> getMappers() throws ParserConfigurationException, URISyntaxException, BindingException {
 		NodeList mappersNL = document.getElementsByTagName("mapper");
 		Map<String, Mapper> mappersHM = new HashMap<>();
 		
@@ -194,7 +196,7 @@ public class XMLParser {
 		return mappersHM;
 	}
 	
-	private static Mapper parseMapper(File mapper) throws ParserConfigurationException {
+	private static Mapper parseMapper(File mapper) throws ParserConfigurationException, BindingException {
 		DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
 		Document mapperDocument = null;
 		
@@ -218,6 +220,8 @@ public class XMLParser {
 		newMapper.namespace = namespace;
 		newMapper.queries = new HashMap<>();
 		
+		getCache(mapperDocument, newMapper);
+		
 		String[] queryTags = {"select", "insert", "update", "delete"};
 		for (String queryTag : queryTags) 	
 			getQueries(mapperDocument, newMapper, queryTag);
@@ -225,6 +229,41 @@ public class XMLParser {
 		return newMapper;
 	}
 
+	private static void getCache(Document document, Mapper newMapper) throws BindingException {
+		NodeList cacheNL = document.getElementsByTagName("cache");
+
+		if (cacheNL.getLength() == 0)
+			return;
+		
+		if (cacheNL.getLength() > 1)
+			throw new BindingException("There cannot be more than one <cache>");
+	
+		Element cacheEl = (Element)cacheNL.item(0);
+		String eviction = cacheEl.getAttribute("eviction");
+		String flushInterval = cacheEl.getAttribute("flushInterval");
+		String size = cacheEl.getAttribute("size");
+		
+		try {
+			Integer.parseInt(size);
+		} catch (NumberFormatException e) {
+			size = Cache.DEF_CAP.toString();
+		}
+		
+		try {
+			Integer.parseInt(flushInterval);
+		} catch (NumberFormatException e) {
+			flushInterval = Cache.DEF_FLUSH_INTERVAL.toString();
+		}
+		
+		if (!eviction.equals("FIFO") && !eviction.equals("LRU"))
+			eviction = "FIFO";
+		
+		newMapper.cacheProperties = new HashMap<>();
+		newMapper.cacheProperties.put("size", size);
+		newMapper.cacheProperties.put("flushInterval", flushInterval);
+		newMapper.cacheProperties.put("eviction", eviction);
+	}
+	
 	private static void getQueries(Document document, Mapper newMapper, String queryTag) throws ParserConfigurationException {
 		NodeList queriesInXML = document.getElementsByTagName(queryTag);
 		Query query = null;
@@ -237,6 +276,7 @@ public class XMLParser {
 			String resultType = queryEl.getAttribute("resultType");
 			String parameterType = queryEl.getAttribute("parameterType");
 			String sql = queryEl.getTextContent().strip();
+			String useCache = queryEl.getAttribute("useCache");
 
 			if (methodId.length() == 0 || parameterType.length() == 0 || sql.length() == 0)
 				throw new ParserConfigurationException("Missing query id/parameterType/sql!");
@@ -248,6 +288,21 @@ public class XMLParser {
 			query.parameterType = parameterType;
 			query.sql = sql;
 			newMapper.queries.put(methodId, query);
+			
+			if (useCache.equals("true")) {
+				if (newMapper.queryCaches == null)
+					newMapper.queryCaches = new HashMap<>();
+				
+				String flushInterval = newMapper.cacheProperties.get("flushInterval");
+				String size = newMapper.cacheProperties.get("size");
+				String eviction = newMapper.cacheProperties.get("eviction");
+				
+				Integer sizeI = Integer.parseInt(newMapper.cacheProperties.get("size"));
+				Integer flushIntervalI = Integer.parseInt(newMapper.cacheProperties.get("flushInterval"));
+				EvictionPolicy ep = newMapper.cacheProperties.get("eviction").equals("FIFO") ? EvictionPolicy.FIFO: EvictionPolicy.LRU;
+				
+				newMapper.queryCaches.put(query, new Cache(sizeI, ep, flushIntervalI));
+			}
 		}
 	}
 }
