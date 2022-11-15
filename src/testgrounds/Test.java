@@ -46,33 +46,37 @@ public class Test {
 //		String type = el.getAttribute("type");
 //		System.out.println(type.length());
 			
-//		File configFile = new File("C:\\Users\\night\\Desktop\\Java Internship\\MyBatis\\mybatis-config.xml");
-//		Configuration config = XMLParser.getConfiguration(configFile);
+		File configFile = new File("C:\\Users\\night\\Desktop\\Java Internship\\MyBatis\\mybatis-config.xml");
+		Configuration config = XMLParser.getConfiguration(configFile);
 //		
 ////		System.out.println(config.toString());
 //		
-//		SqlSessionFactory factory = new SqlSessionFactoryBuilder().build(config, "development");
-//		SqlSession sesh = factory.openSession();
+		SqlSessionFactory factory = new SqlSessionFactoryBuilder().build(config, "development");
+		SqlSession sesh = factory.openSession();
 ////		
-//		EmployeeMapper em = sesh.getMapper(EmployeeMapper.class);
-//		Employee emp = em.selectEmployeeById(208);
-//		System.out.println(emp.first_name);
+		Integer job_id = 4;
+		EmployeeMapper em = sesh.getMapper(EmployeeMapper.class);
+		List<Employee> emp = em.selectEmployeesByJobId(job_id);
+		System.out.println(emp.get(0).first_name);
+		
+		List<Employee> emp1 = em.selectEmployeesByJobId(job_id);
+		System.out.println(emp1.get(0).first_name);
 		
 //		List<Employee> emps = em.selectEmployeesByJobId(4);
 //		for (Employee emp : emps)
 //			System.out.println(emp.first_name);
 		
-		Employee newEmp = new Employee();
-		newEmp.employee_id = 225;
-		newEmp.first_name = "dddd";
-		newEmp.last_name = "dddd";
-		newEmp.email = "cccc@fake.com";
-		newEmp.phone_number = "8673645901";
-		newEmp.hire_date = java.sql.Date.valueOf(LocalDate.now());
-		newEmp.salary = 10_000;
-		newEmp.job_id = 4;
-		newEmp.manager_id = 208;
-		newEmp.department_id = 9;
+//		Employee newEmp = new Employee();
+//		newEmp.employee_id = 225;
+//		newEmp.first_name = "dddd";
+//		newEmp.last_name = "dddd";
+//		newEmp.email = "cccc@fake.com";
+//		newEmp.phone_number = "8673645901";
+//		newEmp.hire_date = java.sql.Date.valueOf(LocalDate.now());
+//		newEmp.salary = 10_000;
+//		newEmp.job_id = 4;
+//		newEmp.manager_id = 208;
+//		newEmp.department_id = 9;
 		
 //		int affectedRows = em.insertEmployee(newEmp);
 //		System.out.println(affectedRows);
@@ -96,14 +100,14 @@ public class Test {
 //		int affectedRows = sesh.delete("DELETE FROM employees WHERE employee_id = #{value}", 225);
 //		System.out.println(affectedRows);
 		
-		String bruh = "";
-		Integer num = null;
-		try {
-			num = Integer.parseInt(bruh);			
-		} catch (NumberFormatException e) {
-			num = 12;
-		}
-		System.out.println(num);
+//		String bruh = "";
+//		Integer num = null;
+//		try {
+//			num = Integer.parseInt(bruh);			
+//		} catch (NumberFormatException e) {
+//			num = 12;
+//		}
+//		System.out.println(num);
 	}
 
 }

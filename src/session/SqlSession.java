@@ -27,6 +27,7 @@ import java.util.regex.Pattern;
 import configuration.Mapper;
 import configuration.Query;
 import exceptions.BindingException;
+import utilities.Cache;
 
 public class SqlSession {
 	private class MapperHandler<T> implements InvocationHandler {
@@ -53,7 +54,19 @@ public class SqlSession {
 			switch (queryTypes.get(mName)) {
 				case "select":
 					Class returnType = Class.forName(query.resultType);
-					return selectList(sql, returnType, args[0]);
+					if (query.useCache.equals("true")) {
+						Cache cache = instance.queryCaches.get(query);
+						List<T> res = (List<T>)cache.read(sql, args[0]);
+						if (res != null) {
+							System.out.println("AAAAAAAAA");
+							return res;
+						}
+					}
+					List<T> res = selectList(sql, returnType, args[0]);
+					if (query.useCache.equals("true")) 
+						instance.queryCaches.get(query).add(sql, args[0], res);
+					
+					return res;
 				case "insert", "update", "delete":
 					return executeUpdate(sql, args[0]);	
 			}
@@ -116,6 +129,35 @@ public class SqlSession {
 		}
 		
 		return resAL;
+	}
+	
+	private <T> List<T> selectList(ResultSet rsS, Class c) throws Exception {
+		T obj = null;
+		ArrayList<T> resAL = new ArrayList<>();
+		ResultSet rs = rsS;
+		
+		Constructor<T> constructor = c.getDeclaredConstructor();
+		obj = (T)constructor.newInstance();
+		
+		while (rs.next()) {
+			obj = (T)constructor.newInstance();
+			populateResult(c, rs, obj);
+			resAL.add(obj);
+		}
+		
+		return resAL;
+	}
+	
+	private <T> T selectOne(ResultSet rsS, Class c) throws Exception {
+		List<T> resAL = selectList(rsS, c);
+		int size = resAL.size();
+		
+		if (size > 1)
+			throw new SQLException("Too many results!");
+		if (size == 0)
+			return null;
+		
+		return resAL.get(0);
 	}
 	
 	public int insert(String sql, Object params) throws NoSuchFieldException, IllegalAccessException, SQLException {

@@ -4,11 +4,11 @@
   "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="testgrounds.EmployeeMapper">
 
-  <select id="selectEmployeeById" parameterType="int" resultType="testgrounds.Employee">
+  <select id="selectEmployeeById" parameterType="int" resultType="testgrounds.Employee" useCache="true">
     SELECT * FROM employees WHERE employee_id = #{value}
   </select>
 
-  <select id="selectEmployeesByJobId" parameterType="int" resultType="testgrounds.Employee">
+  <select id="selectEmployeesByJobId" parameterType="int" resultType="testgrounds.Employee" useCache="true">
     SELECT * FROM employees WHERE job_id = #{value}
   </select>
 
@@ -34,4 +34,6 @@
   <delete id="deleteEmployeeById" parameterType="int">
     DELETE FROM employees WHERE employee_id = #{value}
   </delete>
+
+  <cache eviction="LRU" flushInterval="60000" size="512"/>
 </mapper>

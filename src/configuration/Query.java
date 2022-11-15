@@ -9,6 +9,7 @@ public class Query {
 	public String resultType;
 	public String resultMap;
 	public String sql;
+	public String useCache;
 	
 	@Override
 	public String toString() {

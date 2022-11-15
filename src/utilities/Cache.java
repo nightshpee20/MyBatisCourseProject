@@ -1,7 +1,5 @@
 package utilities;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
@@ -10,16 +8,25 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 public class Cache {
-	class Entry {
+	class Entry implements Comparable<Entry> {
 		String sql;
 		Object params;
-		ResultSet rs;
+		Object res;
 		int readsArrPos;
 		
-		Entry(String sql, Object params, ResultSet rs) {
+		Entry(String sql, Object params, Object res) {
 			this.sql = sql;
 			this.params = params;
-			this.rs = rs;
+			this.res = res;
+		}
+
+		@Override
+		public int compareTo(Entry o) {
+			if (reads[readsArrPos] == reads[o.readsArrPos])
+				return 0;
+			if (reads[readsArrPos] > reads[o.readsArrPos])
+				return 1;
+			return -1;
 		}
 	}
 	
@@ -67,8 +74,8 @@ public class Cache {
 		}, flushInterval, flushInterval);
 	}
 	
-	public void add(String sql, Object params, ResultSet rs) {
-		if (sql == null || params == null || rs == null)
+	public void add(String sql, Object params, Object res) {
+		if (sql == null || params == null || res == null)
 			throw new IllegalArgumentException("This method does not accept null arguments of any kind!");
 		
 		if (size == capacity)
@@ -76,7 +83,7 @@ public class Cache {
 		else
 			size++;
 		
-		Entry entry = new Entry(sql, params, rs);
+		Entry entry = new Entry(sql, params, res);
 		cacheMap.put(sql, entry);
 		
 		if (evictionPolicy == EvictionPolicy.FIFO) {
@@ -87,7 +94,7 @@ public class Cache {
 		}
 	}
 	
-	public ResultSet read(String sql, Object params) {
+	public Object read(String sql, Object params) {
 		if (sql == null || params == null)
 			throw new IllegalArgumentException("sql/params cannot be null!");
 		
@@ -102,7 +109,7 @@ public class Cache {
 				evictionPQ.add(entry); 
 			}
 			
-			return entry.rs;
+			return entry.res;
 		}
 		
 		return null;
@@ -133,5 +140,9 @@ public class Cache {
 			Arrays.fill(reads, 0);			
 		} else
 			Arrays.fill(evictionCB.buf, null);
+	}
+	
+	public int size() {
+		return size;
 	}
 }

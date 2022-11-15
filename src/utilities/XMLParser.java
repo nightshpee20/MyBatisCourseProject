@@ -288,11 +288,11 @@ public class XMLParser {
 			query.parameterType = parameterType;
 			query.sql = sql;
 			newMapper.queries.put(methodId, query);
-			
 			if (useCache.equals("true")) {
 				if (newMapper.queryCaches == null)
 					newMapper.queryCaches = new HashMap<>();
 				
+				query.useCache = "true";
 				String flushInterval = newMapper.cacheProperties.get("flushInterval");
 				String size = newMapper.cacheProperties.get("size");
 				String eviction = newMapper.cacheProperties.get("eviction");
