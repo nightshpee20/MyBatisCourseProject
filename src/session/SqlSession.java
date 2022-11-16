@@ -54,20 +54,23 @@ public class SqlSession {
 			switch (queryTypes.get(mName)) {
 				case "select":
 					Class returnType = Class.forName(query.resultType);
-					if (query.useCache.equals("true")) {
+					boolean useCache = query.useCache.equals("true");
+					
+					if (useCache) {
 						Cache cache = instance.queryCaches.get(query);
 						List<T> res = (List<T>)cache.read(sql, args[0]);
 						if (res != null) {
-							System.out.println("AAAAAAAAA");
 							return res;
 						}
 					}
+					
 					List<T> res = selectList(sql, returnType, args[0]);
-					if (query.useCache.equals("true")) 
+					if (useCache) 
 						instance.queryCaches.get(query).add(sql, args[0], res);
 					
 					return res;
 				case "insert", "update", "delete":
+					instance.queryCaches.forEach((qry, cache) -> cache.reset());
 					return executeUpdate(sql, args[0]);	
 			}
 			
@@ -291,6 +294,7 @@ public class SqlSession {
 			new Class[] {cl},
 			handler
 		);
+		
 		return proxy;
 	}
 }

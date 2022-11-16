@@ -55,12 +55,20 @@ public class Test {
 		SqlSession sesh = factory.openSession();
 ////		
 		Integer job_id = 4;
+		Integer job_id1 = 9;
+		
 		EmployeeMapper em = sesh.getMapper(EmployeeMapper.class);
 		List<Employee> emp = em.selectEmployeesByJobId(job_id);
 		System.out.println(emp.get(0).first_name);
 		
-		List<Employee> emp1 = em.selectEmployeesByJobId(job_id);
+		List<Employee> emp1 = em.selectEmployeesByJobId(job_id1);
 		System.out.println(emp1.get(0).first_name);
+		
+		List<Employee> emp2 = em.selectEmployeesByJobId(job_id);
+		System.out.println(emp2.get(0).first_name);
+		
+		List<Employee> emp3 = em.selectEmployeesByJobId(job_id1);
+		System.out.println(emp3.get(0).first_name);
 		
 //		List<Employee> emps = em.selectEmployeesByJobId(4);
 //		for (Employee emp : emps)

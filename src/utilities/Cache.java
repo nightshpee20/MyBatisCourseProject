@@ -8,20 +8,18 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 public class Cache {
-	class Entry implements Comparable<Entry> {
-		String sql;
-		Object params;
+	class CacheItem implements Comparable<CacheItem> {
+		String key;
 		Object res;
 		int readsArrPos;
 		
-		Entry(String sql, Object params, Object res) {
-			this.sql = sql;
-			this.params = params;
+		CacheItem(String sql, Object params, Object res) {
+			key = sql + params.toString();
 			this.res = res;
 		}
 
 		@Override
-		public int compareTo(Entry o) {
+		public int compareTo(CacheItem o) {
 			if (reads[readsArrPos] == reads[o.readsArrPos])
 				return 0;
 			if (reads[readsArrPos] > reads[o.readsArrPos])
@@ -38,12 +36,12 @@ public class Cache {
 	private EvictionPolicy evictionPolicy;
 	private int flushInterval;
 	
-	private Map<String, Entry> cacheMap;
+	private Map<String, CacheItem> cacheMap;
 	
-	private PriorityQueue<Entry> evictionPQ;
+	private PriorityQueue<CacheItem> evictionPQ;
 	private int nextReadsArrPos;
 	private int[] reads;
-	private CircularBuffer<Entry> evictionCB;
+	private CircularBuffer<CacheItem> evictionCB;
 	
 	private int size;
 	private int capacity;
@@ -83,8 +81,8 @@ public class Cache {
 		else
 			size++;
 		
-		Entry entry = new Entry(sql, params, res);
-		cacheMap.put(sql, entry);
+		CacheItem entry = new CacheItem(sql, params, res);
+		cacheMap.put(entry.key, entry);
 		
 		if (evictionPolicy == EvictionPolicy.FIFO) {
 			evictionCB.add(entry);
@@ -98,11 +96,12 @@ public class Cache {
 		if (sql == null || params == null)
 			throw new IllegalArgumentException("sql/params cannot be null!");
 		
-		Entry entry = cacheMap.get(sql);
+		String key = sql + params.toString();
+		CacheItem entry = cacheMap.get(key);
 		if (entry == null)
 			return null;
 		
-		if (entry.params.equals(params)) {
+		if (entry.key.equals(key)) {
 			if (evictionPQ != null) {
 				evictionPQ.remove(entry);
 				reads[entry.readsArrPos]++;
@@ -116,7 +115,7 @@ public class Cache {
 	}
 	
 	private void evict() {
-		Entry leastRead = null;
+		CacheItem leastRead = null;
 		if (evictionCB != null) {
 			leastRead = evictionCB.poll();
 		} else {
@@ -126,12 +125,12 @@ public class Cache {
 			reads[pos] = 0;
 		}
 		
-		String key = leastRead.sql;
+		String key = leastRead.key;
 		cacheMap.remove(key);
 		size--;
 	}
 	
-	private void reset() {
+	public void reset() {
 		cacheMap.clear();
 		
 		if (evictionPQ != null) {

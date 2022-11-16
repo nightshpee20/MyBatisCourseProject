@@ -1,8 +1,6 @@
 package configuration;
 
 public class Query {	
-	public static final String PARAM_PAT = "#\\{[0-9a-zA-Z$_]*}";
-	
 	public String id;
 	public String queryType;
 	public String parameterType;
